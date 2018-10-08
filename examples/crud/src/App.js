@@ -2,7 +2,7 @@
 // slow initial load
 // show loading quickly on initial load, don't show top level placeholder on navigation
 import React from "react";
-import { Router, Link, Redirect } from "@reach/router";
+import { Router, Link, Redirect, globalHistory } from "@reach/router";
 import {
   login,
   getContacts,
@@ -12,6 +12,10 @@ import {
   deleteContact
 } from "./utils";
 import createContext from "create-react-context";
+
+globalHistory.listen(({ location, action }) => {
+  console.log({ location, action });
+});
 
 const InvalidateContacts = createContext();
 const withInvalidateContacts = Comp => props => (

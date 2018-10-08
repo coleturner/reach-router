@@ -5,7 +5,6 @@ import PropTypes from "prop-types";
 import invariant from "invariant";
 import createContext from "create-react-context";
 import { polyfill } from "react-lifecycles-compat";
-import ReactDOM from "react-dom";
 import {
   startsWith,
   pick,
@@ -22,11 +21,6 @@ import {
 } from "./lib/history";
 
 ////////////////////////////////////////////////////////////////////////////////
-// React polyfill
-let { unstable_deferredUpdates } = ReactDOM;
-if (unstable_deferredUpdates === undefined) {
-  unstable_deferredUpdates = fn => fn();
-}
 
 const createNamedContext = (name, defaultValue) => {
   const Ctx = createContext(defaultValue);
@@ -102,7 +96,8 @@ class LocationProvider extends React.Component {
     } = this;
     refs.unlisten = history.listen(() => {
       Promise.resolve().then(() => {
-        unstable_deferredUpdates(() => {
+        // TODO: replace rAF with react deferred update API when it's ready https://github.com/facebook/react/issues/13306
+        requestAnimationFrame(() => {
           if (!this.unmounted) {
             this.setState(() => ({ context: this.getContext() }));
           }
@@ -136,7 +131,11 @@ class LocationProvider extends React.Component {
 let ServerLocation = ({ url, children }) => (
   <LocationContext.Provider
     value={{
-      location: { pathname: url },
+      location: {
+        pathname: url,
+        search: "",
+        hash: ""
+      },
       navigate: () => {
         throw new Error("You can't call navigate on the server.");
       }
@@ -322,7 +321,11 @@ class FocusHandlerImpl extends React.Component {
       if (initialRender) {
         initialRender = false;
       } else {
-        this.node.focus();
+        // React polyfills [autofocus] and it fires earlier than cDM,
+        // so we were stealing focus away, this line prevents that.
+        if (!this.node.contains(document.activeElement)) {
+          this.node.focus();
+        }
       }
     }
   }
@@ -474,6 +477,10 @@ let Match = ({ path, children }) => (
 let stripSlashes = str => str.replace(/(^\/+|\/+$)/g, "");
 
 let createRoute = basepath => element => {
+  if (!element) {
+    return null;
+  }
+
   invariant(
     element.props.path || element.props.default || element.type === Redirect,
     `<Router>: Children of <Router> must have a \`path\` or \`default\` prop, or be a \`<Redirect>\`. None found on element type \`${
@@ -535,5 +542,6 @@ export {
   createMemorySource,
   isRedirect,
   navigate,
-  redirectTo
+  redirectTo,
+  globalHistory
 };
