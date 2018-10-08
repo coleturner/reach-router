@@ -230,7 +230,11 @@ var RouterImpl = function (_React$PureComponent) {
 
       var clone = React.cloneElement(element, props, element.props.children ? React.createElement(
         Router,
-        { location: location, primary: primary },
+        {
+          location: location,
+          primary: primary,
+          component: !primary ? component : undefined
+        },
         element.props.children
       ) : undefined);
 
